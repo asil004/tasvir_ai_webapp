@@ -112,8 +112,8 @@ export default function Home() {
           requires_payment: result.requires_payment,
           subscribed: result.subscribed,
           sponsors_count: result.sponsors?.length || 0,
-          price_stars: result.price_stars,
-          price_uzs: result.price_uzs,
+          price_stars: result.template_price?.price_stars,
+          price_uzs: result.template_price?.price_uzs,
         });
       }
 
