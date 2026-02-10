@@ -6,14 +6,14 @@ import { formatNumber } from '@/utils/helpers';
 import { isInvoiceSupported, getTelegramWebApp } from '@/utils/telegram';
 
 interface PaymentModalProps {
-  onSelectPayment: (method: 'stars' | 'uzs') => void;
+  onSelectPayment: (method: 'stars' | 'click') => void;
   onBack: () => void;
   loading?: boolean;
 }
 
 export default function PaymentModal({ onSelectPayment, onBack, loading = false }: PaymentModalProps) {
   const { priceStars, priceUzs } = useAppSelector((state) => state.subscription);
-  const [selectedMethod, setSelectedMethod] = useState<'stars' | 'uzs' | null>(null);
+  const [selectedMethod, setSelectedMethod] = useState<'stars' | 'click' | null>(null);
   const [starsSupported, setStarsSupported] = useState(true);
   const [telegramVersion, setTelegramVersion] = useState('');
 
@@ -27,7 +27,7 @@ export default function PaymentModal({ onSelectPayment, onBack, loading = false 
     }
   }, []);
 
-  const handleSelect = (method: 'stars' | 'uzs') => {
+  const handleSelect = (method: 'stars' | 'click') => {
     if (method === 'stars' && !starsSupported) {
       return; // Disabled
     }
@@ -86,10 +86,10 @@ export default function PaymentModal({ onSelectPayment, onBack, loading = false 
         {/* Click Payment */}
         {priceUzs && priceUzs > 0 && (
           <button
-            onClick={() => handleSelect('uzs')}
+            onClick={() => handleSelect('click')}
             disabled={loading}
             className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
-              selectedMethod === 'uzs'
+              selectedMethod === 'click'
                 ? 'border-accent bg-accent/10'
                 : 'border-border hover:border-accent'
             } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}

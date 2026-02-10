@@ -86,7 +86,7 @@ const api = {
 
   confirmPayment: async (
     generationRequestId: number,
-    paymentMethod: 'stars' | 'uzs'
+    paymentMethod: 'stars' | 'click'
   ): Promise<PaymentConfirmResponse> => {
     const response = await apiClient.post(`/api/v1/confirm-payment`, {
       generation_request_id: generationRequestId,

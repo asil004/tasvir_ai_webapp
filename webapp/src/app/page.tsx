@@ -35,7 +35,7 @@ export default function Home() {
   const [showAlert, setShowAlert] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'stars' | 'uzs' | null>(null);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'stars' | 'click' | null>(null);
   const [currentGenerationRequestId, setCurrentGenerationRequestId] = useState<number | null>(null);
 
   const { templates, currentPage, totalPages, itemsPerPage, loading } = useAppSelector(
@@ -141,7 +141,7 @@ export default function Home() {
     }
   };
 
-  const handleSelectPaymentMethod = async (method: 'stars' | 'uzs') => {
+  const handleSelectPaymentMethod = async (method: 'stars' | 'click') => {
     setSelectedPaymentMethod(method);
     setPaymentLoading(true);
 
@@ -233,7 +233,7 @@ export default function Home() {
       } else if (method === 'stars' && !paymentResult.invoice_url) {
         // Backend invoice_url qaytarmagan
         throw new Error('Invoice URL not received from backend');
-      } else if (method === 'uzs' && paymentResult.payment_url) {
+      } else if (method === 'click' && paymentResult.payment_url) {
         // Open Click payment in new window
         const paymentWindow = window.open(paymentResult.payment_url, '_blank');
         if (!paymentWindow) {

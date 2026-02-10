@@ -56,7 +56,7 @@ export interface SubscriptionCheckResponse {
 
 export interface PaymentCreateResponse {
   status: string;
-  payment_method: 'stars' | 'uzs';
+  payment_method: 'stars' | 'click';
   invoice_url?: string;  // Stars uchun - Telegram invoice URL
   payment_url?: string;  // Click uchun - Click payment URL
   price?: number;
@@ -151,6 +151,7 @@ export interface TelegramWebApp {
   }, callback?: (id: string) => void) => void;
   showAlert: (message: string, callback?: () => void) => void;
   showConfirm: (message: string, callback?: (confirmed: boolean) => void) => void;
+  openInvoice: (url: string, callback?: (status: 'paid' | 'cancelled' | 'failed' | 'pending') => void) => void;
   ready: () => void;
   expand: () => void;
   close: () => void;

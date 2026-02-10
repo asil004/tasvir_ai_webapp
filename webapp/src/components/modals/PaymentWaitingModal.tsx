@@ -3,7 +3,7 @@
 import React from 'react';
 
 interface PaymentWaitingModalProps {
-  paymentMethod: 'stars' | 'uzs';
+  paymentMethod: 'stars' | 'click';
   onCheckPayment: () => void;  // Click uchun - faqat status tekshiradi
   onCancel: () => void;
   loading?: boolean;
