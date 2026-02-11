@@ -10,7 +10,7 @@ services:
     container_name: tasvir-ai-webapp
     restart: unless-stopped
     env_file:
-      - .env.production
+      - webapp/.env.production
     ports:
       - "3000:3000"
     environment:
