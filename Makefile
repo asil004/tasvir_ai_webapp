@@ -150,5 +150,34 @@ firewall-setup: ## Show firewall setup instructions
 monitor: ## Monitor container resources (real-time)
 	docker stats tasvir-ai-webapp
 
+monitor-full: ## Full system and container monitoring (auto-refresh)
+	@chmod +x monitor.sh
+	@./monitor.sh
+
+cleanup: ## Clean up Docker resources and free disk space
+	@chmod +x cleanup.sh
+	@./cleanup.sh
+
+setup-cron: ## Setup automatic weekly cleanup
+	@chmod +x setup-cron.sh
+	@./setup-cron.sh
+
+disk: ## Show disk usage
+	@echo '$(YELLOW)Disk Usage:$(NC)'
+	@df -h / | head -2
+	@echo ''
+	@echo '$(YELLOW)Docker Disk Usage:$(NC)'
+	@docker system df
+
+resources: ## Show current resource usage
+	@echo '$(YELLOW)System Resources:$(NC)'
+	@free -h
+	@echo ''
+	@echo '$(YELLOW)CPU Usage:$(NC)'
+	@top -bn1 | grep "Cpu(s)"
+	@echo ''
+	@echo '$(YELLOW)Container Stats:$(NC)'
+	@docker stats --no-stream tasvir-ai-webapp 2>/dev/null || echo "Container not running"
+
 # Default target
 .DEFAULT_GOAL := help
