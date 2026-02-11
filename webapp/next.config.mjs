@@ -1,5 +1,11 @@
 /** @type {import('next').NextConfig} */
 
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 // Log environment variables for debugging
 console.log('🔍 Environment Variables:');
 console.log('NEXT_PUBLIC_API_BASE_URL:', process.env.NEXT_PUBLIC_API_BASE_URL);
@@ -25,6 +31,10 @@ const nextConfig = {
         hostname: '**',
       },
     ],
+  },
+  webpack: (config) => {
+    config.resolve.alias['@'] = path.resolve(__dirname, 'src');
+    return config;
   },
   async rewrites() {
     const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
