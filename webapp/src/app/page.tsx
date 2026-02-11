@@ -91,11 +91,12 @@ export default function Home() {
     // Development mode: use test user if Telegram user not available
     const userId = telegramUser?.id || 1046805799; // Test user ID for development
 
-    if (!telegramUser && process.env.NODE_ENV === 'production') {
-      showAlertMessage('Iltimos, Telegram bot orqali oching');
-      setModalStep('upload');
-      return;
-    }
+    // Telegram check disabled for testing
+    // if (!telegramUser && process.env.NODE_ENV === 'production') {
+    //   showAlertMessage('Iltimos, Telegram bot orqali oching');
+    //   setModalStep('upload');
+    //   return;
+    // }
 
     if (!selectedTemplateId) {
       showAlertMessage('Template tanlanmagan');
