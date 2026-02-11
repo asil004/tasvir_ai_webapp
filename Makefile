@@ -77,6 +77,14 @@ clean: ## Remove containers, volumes, and images
 	docker rmi tasvir_ai_webapp-webapp 2>/dev/null || true
 	@echo '$(GREEN)✓ Cleanup complete!$(NC)'
 
+clean-build: ## Clean Next.js build cache and rebuild
+	@echo '$(YELLOW)Cleaning Next.js build cache...$(NC)'
+	@rm -rf webapp/.next webapp/node_modules/.cache || true
+	@echo '$(GREEN)✓ Build cache cleaned!$(NC)'
+	@echo '$(YELLOW)Rebuilding with fresh cache...$(NC)'
+	@make build-no-cache
+	@echo '$(GREEN)✓ Clean build complete!$(NC)'
+
 clean-all: ## Remove all Docker resources including unused images
 	@echo '$(YELLOW)Deep cleaning Docker resources...$(NC)'
 	docker compose down -v

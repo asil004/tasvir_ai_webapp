@@ -10,6 +10,10 @@ const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
   output: 'standalone', // Enable standalone mode for Docker
+  // Generate unique build ID to prevent Server Action mismatch
+  generateBuildId: async () => {
+    return `build-${Date.now()}`;
+  },
   images: {
     remotePatterns: [
       {
