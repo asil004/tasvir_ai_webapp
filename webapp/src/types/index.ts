@@ -60,6 +60,8 @@ export interface PaymentCreateResponse {
   invoice_url?: string;  // Stars uchun - Telegram invoice URL
   payment_url?: string;  // Click uchun - Click payment URL
   price?: number;
+  message?: string;
+  error?: string;
 }
 
 export interface PaymentConfirmResponse {
