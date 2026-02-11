@@ -1,0 +1,55 @@
+# Dependencies
+webapp/node_modules
+webapp/.next
+webapp/.pnp
+webapp/.pnp.js
+
+# Testing
+webapp/coverage
+webapp/.nyc_output
+
+# Production
+webapp/build
+webapp/dist
+webapp/out
+
+# Misc
+.DS_Store
+*.pem
+
+# Debug
+webapp/npm-debug.log*
+webapp/yarn-debug.log*
+webapp/yarn-error.log*
+
+# Local env files
+webapp/.env*.local
+webapp/.env.local
+
+# Vercel
+webapp/.vercel
+
+# TypeScript
+webapp/*.tsbuildinfo
+webapp/next-env.d.ts
+
+# Git
+.git
+.gitignore
+.github
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Documentation
+*.md
+!README.md
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
