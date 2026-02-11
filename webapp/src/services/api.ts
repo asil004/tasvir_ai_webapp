@@ -9,6 +9,8 @@ import {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
 
+console.log('🌐 API_BASE_URL:', API_BASE_URL);
+
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -16,6 +18,22 @@ const apiClient = axios.create({
   },
   timeout: 30000,
 });
+
+// Test connection on startup
+if (typeof window !== 'undefined') {
+  console.log('🔌 Testing backend connection...');
+  fetch(`${API_BASE_URL}/api/v1/templates?page=1&limit=1`)
+    .then(res => {
+      if (res.ok) {
+        console.log('✅ Backend connection OK');
+      } else {
+        console.error('❌ Backend returned error:', res.status);
+      }
+    })
+    .catch(err => {
+      console.error('❌ Backend connection failed:', err.message);
+    });
+}
 
 // Add response interceptor for better error handling
 apiClient.interceptors.response.use(
@@ -31,16 +49,21 @@ apiClient.interceptors.response.use(
     return response;
   },
   (error) => {
-    // Log errors in development
-    if (process.env.NODE_ENV === 'development') {
-      console.error('❌ API Error:', {
-        url: error.config?.url,
-        status: error.response?.status,
-        data: error.response?.data,
-        message: error.message,
-        code: error.code,
-      });
-    }
+    // Log errors in development WITH FULL DETAILS
+    console.error('❌ API Error FULL DETAILS:', {
+      url: error.config?.url,
+      method: error.config?.method,
+      baseURL: error.config?.baseURL,
+      fullURL: error.config?.baseURL + error.config?.url,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      message: error.message,
+      code: error.code,
+      headers: error.response?.headers,
+      request: error.request ? 'present' : 'missing',
+      response: error.response ? 'present' : 'missing',
+    });
 
     // Return a more detailed error
     if (error.response) {
@@ -56,18 +79,30 @@ apiClient.interceptors.response.use(
       throw customError;
     } else if (error.request) {
       // The request was made but no response was received
+      console.error('❌ NO RESPONSE FROM SERVER:', {
+        code: error.code,
+        message: error.message,
+        errno: error.errno,
+        syscall: error.syscall,
+      });
+
       // This could be network error, CORS, timeout, etc.
       if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
         throw new Error('So\'rov vaqti tugadi. Qayta urinib ko\'ring.');
       } else if (error.message.includes('Network Error')) {
-        throw new Error('Internet aloqasi yo\'q. Internetni tekshiring.');
+        // Check if it's CORS issue
+        console.error('❌ Network Error - Bu CORS muammosi bo\'lishi mumkin!');
+        console.error('❌ Backend CORS sozlanganini tekshiring!');
+        throw new Error('Backend\'ga ulanib bo\'lmadi. CORS muammosi bo\'lishi mumkin.');
       } else {
         // For other cases, just pass through the original error
         // Don't throw a new error, return the original
+        console.error('❌ Unknown request error, passing through...');
         return Promise.reject(error);
       }
     } else {
       // Something happened in setting up the request that triggered an Error
+      console.error('❌ Request setup error, passing through...');
       return Promise.reject(error);
     }
   }
