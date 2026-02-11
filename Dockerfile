@@ -18,16 +18,6 @@ RUN npm ci
 # Copy source code
 COPY webapp/ ./
 
-# Build arguments for Next.js
-ARG NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
-ARG NEXT_PUBLIC_BOT_USERNAME=your_bot_username
-ARG NODE_ENV=production
-
-# Set environment variables for build
-ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
-ENV NEXT_PUBLIC_BOT_USERNAME=$NEXT_PUBLIC_BOT_USERNAME
-ENV NODE_ENV=$NODE_ENV
-
 # Build the application
 RUN npm run build
 
