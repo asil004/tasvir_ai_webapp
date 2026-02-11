@@ -29,6 +29,8 @@ const config: Config = {
       animation: {
         'fade-in-up': 'fadeInUp 0.6s ease-out forwards',
         'slide-in': 'slideIn 0.5s ease-out forwards',
+        'shimmer': 'shimmer 2s infinite',
+        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       },
       keyframes: {
         fadeInUp: {
@@ -38,6 +40,10 @@ const config: Config = {
         slideIn: {
           from: { opacity: '0', transform: 'translateX(-20px)' },
           to: { opacity: '1', transform: 'translateX(0)' },
+        },
+        shimmer: {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(100%)' },
         },
       },
     },

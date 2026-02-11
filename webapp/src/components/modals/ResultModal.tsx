@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import api from '@/services/api';
 import { downloadBlob } from '@/utils/helpers';
 import { hapticFeedback } from '@/utils/telegram';
@@ -12,6 +12,7 @@ interface ResultModalProps {
 }
 
 export default function ResultModal({ imageUrl, templateTitle, onClose }: ResultModalProps) {
+  const [imageLoading, setImageLoading] = useState(true);
   const handleDownload = async () => {
     try {
       hapticFeedback('impact', 'medium');
@@ -34,8 +35,29 @@ export default function ResultModal({ imageUrl, templateTitle, onClose }: Result
       </div>
 
       <div className="animate-fade-in-up">
-        <div className="rounded-lg overflow-hidden border-2 border-accent">
-          <img src={imageUrl} alt="Generated Image" className="w-full h-auto object-contain" />
+        <div className="rounded-lg overflow-hidden border-2 border-accent relative">
+          {/* Skeleton loader */}
+          {imageLoading && (
+            <div className="absolute inset-0 bg-secondary-bg animate-pulse flex items-center justify-center">
+              <div className="space-y-4 text-center">
+                <div className="w-16 h-16 mx-auto relative">
+                  <div className="absolute inset-0 border-4 border-border rounded-full" />
+                  <div className="absolute inset-0 border-4 border-accent rounded-full border-t-transparent animate-spin" />
+                </div>
+                <p className="text-secondary-text text-sm font-mono">Rasm yuklanmoqda...</p>
+              </div>
+            </div>
+          )}
+          {/* Actual image */}
+          <img
+            src={imageUrl}
+            alt="Generated Image"
+            className={`w-full h-auto object-contain transition-opacity duration-500 ${
+              imageLoading ? 'opacity-0' : 'opacity-100'
+            }`}
+            onLoad={() => setImageLoading(false)}
+            onError={() => setImageLoading(false)}
+          />
         </div>
       </div>
 

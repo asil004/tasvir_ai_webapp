@@ -13,6 +13,8 @@ import {
 import { checkSubscription } from '@/store/slices/subscriptionSlice';
 import Navbar from '@/components/Navbar';
 import TemplateCard from '@/components/TemplateCard';
+import TemplateCardSkeleton from '@/components/TemplateCardSkeleton';
+import EmptyState from '@/components/EmptyState';
 import Pagination from '@/components/Pagination';
 import Modal from '@/components/Modal';
 import Alert from '@/components/Alert';
@@ -156,12 +158,21 @@ export default function Home() {
     try {
       // Step 1: Upload images and create generation request (with payment_verified=false)
       const files = uploadedImages.map((img) => img.file);
+
+      console.log('📸 Starting generation request...', {
+        templateId: selectedTemplateId,
+        userId,
+        filesCount: files.length,
+      });
+
       const generationResult = await api.generateImage(
         selectedTemplateId,
         userId,
         files,
         false // payment_verified = false
       );
+
+      console.log('📸 Generation result:', generationResult);
 
       if (generationResult.status === 'error') {
         throw new Error(generationResult.error || 'Generation failed');
@@ -174,6 +185,13 @@ export default function Home() {
       setCurrentGenerationRequestId(generationResult.request_id);
 
       // Step 2: Create payment
+      console.log('💳 Creating payment...', {
+        userId,
+        templateId: selectedTemplateId,
+        generationRequestId: generationResult.request_id,
+        method,
+      });
+
       const paymentResult = await api.createPayment(
         userId,
         selectedTemplateId,
@@ -181,17 +199,29 @@ export default function Home() {
         method
       );
 
-      if (paymentResult.status !== 'success') {
-        throw new Error('Payment creation failed');
+      console.log('💳 Payment result:', paymentResult);
+
+      // Check if payment creation was successful (more flexible check)
+      if (!paymentResult || (paymentResult.status && paymentResult.status === 'error')) {
+        console.error('❌ Payment creation failed:', paymentResult);
+        throw new Error(paymentResult?.message || 'Payment creation failed');
       }
 
       // Step 3: Open payment UI
-      if (method === 'stars' && paymentResult.invoice_url) {
+      if (method === 'stars') {
+        // Stars payment flow
+        if (!paymentResult.invoice_url) {
+          console.error('❌ Invoice URL missing:', paymentResult);
+          throw new Error('Invoice URL not received from backend');
+        }
+        console.log('⭐ Stars payment - checking Telegram support...');
+
         // Check if Stars payment is supported
         if (!isInvoiceSupported()) {
           const tg = getTelegramWebApp();
           const version = tg?.version || 'unknown';
 
+          console.warn('⭐ Stars not supported, Telegram version:', version);
           showAlertMessage(
             `Telegram ilovangiz eskiroq (v${version}). Stars to'lovi uchun Telegram'ni yangilang (v6.1+) yoki Click orqali to'lang.`
           );
@@ -203,50 +233,81 @@ export default function Home() {
         // Open Telegram Stars invoice
         const tg = getTelegramWebApp();
         if (tg && tg.openInvoice) {
+          console.log('⭐ Opening Stars invoice:', paymentResult.invoice_url);
+          console.log('⭐ Telegram version:', tg.version);
+
           setModalStep('payment_waiting');
           setPaymentLoading(false);
 
-          if (process.env.NODE_ENV === 'development') {
-            console.log('⭐ Opening Stars invoice:', paymentResult.invoice_url);
-            console.log('⭐ Telegram version:', tg.version);
-          }
-
           // Use invoice_url (not payload!)
           tg.openInvoice(paymentResult.invoice_url, (status) => {
+            console.log('⭐ Invoice callback status:', status);
+
             if (status === 'paid') {
+              console.log('⭐ Payment successful!');
               handlePaymentSuccess();
             } else if (status === 'cancelled') {
+              console.log('⭐ Payment cancelled');
               setPaymentLoading(false);
               showAlertMessage('To\'lov bekor qilindi');
               setModalStep('payment');
             } else if (status === 'failed') {
+              console.error('⭐ Payment failed');
               setPaymentLoading(false);
               showAlertMessage('To\'lov xatosi');
               setModalStep('payment');
+            } else if (status === 'pending') {
+              console.log('⭐ Payment pending, waiting...');
+              // Keep waiting
             }
           });
         } else {
+          console.error('⭐ Telegram WebApp not available');
           showAlertMessage('Telegram WebApp mavjud emas. Brauzerda test qilyapsizmi?');
           setPaymentLoading(false);
           setModalStep('payment');
         }
-      } else if (method === 'stars' && !paymentResult.invoice_url) {
-        // Backend invoice_url qaytarmagan
-        throw new Error('Invoice URL not received from backend');
-      } else if (method === 'click' && paymentResult.payment_url) {
+      } else if (method === 'click') {
+        // Click payment flow
+        if (!paymentResult.payment_url) {
+          console.error('❌ Payment URL missing for Click:', paymentResult);
+          throw new Error('Payment URL not received from backend');
+        }
+
+        console.log('💳 Opening Click payment URL:', paymentResult.payment_url);
+
         // Open Click payment in new window
         const paymentWindow = window.open(paymentResult.payment_url, '_blank');
         if (!paymentWindow) {
+          console.error('❌ Popup blocked');
           showAlertMessage('Popup blocker o\'chirilgan. Iltimos, ruxsat bering.');
+          setPaymentLoading(false);
+          setModalStep('payment');
+          return;
         }
+
+        console.log('💳 Click payment window opened successfully');
         setModalStep('payment_waiting');
         setPaymentLoading(false);
       } else {
+        console.error('❌ Invalid payment method or response:', { method, paymentResult });
         throw new Error('Invalid payment response');
       }
     } catch (error: any) {
-      console.error('Payment creation error:', error);
-      showAlertMessage(error.message || 'To\'lov yaratishda xatolik');
+      console.error('❌ Payment creation error:', error);
+      console.error('❌ Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+
+      // Show more detailed error message
+      const errorMessage = error.response?.data?.message
+        || error.response?.data?.error
+        || error.message
+        || 'To\'lov yaratishda xatolik';
+
+      showAlertMessage(errorMessage);
       setPaymentLoading(false);
       setModalStep('payment');
     }
@@ -254,16 +315,17 @@ export default function Home() {
 
   const handlePaymentSuccess = async () => {
     // ⭐ STARS: Called when Stars payment is successful via invoice callback
+    console.log('⭐ handlePaymentSuccess called');
+
     if (!currentGenerationRequestId) {
+      console.error('⭐ No generation request ID found');
       showAlertMessage('Generation request topilmadi');
       return;
     }
 
-    if (process.env.NODE_ENV === 'development') {
-      console.log('⭐ Stars payment success, calling confirm-payment...', {
-        generationRequestId: currentGenerationRequestId,
-      });
-    }
+    console.log('⭐ Stars payment success, calling confirm-payment...', {
+      generationRequestId: currentGenerationRequestId,
+    });
 
     setPaymentLoading(true);
 
@@ -274,23 +336,24 @@ export default function Home() {
         'stars'
       );
 
-      if (process.env.NODE_ENV === 'development') {
-        console.log('⭐ Stars confirm-payment result:', confirmResult);
-      }
+      console.log('⭐ Stars confirm-payment result:', confirmResult);
 
-      if (confirmResult.status === 'success') {
+      // More flexible status check
+      if (confirmResult && (confirmResult.status === 'success' || confirmResult.message?.includes('success'))) {
+        console.log('⭐ Payment confirmed! Starting generation...');
         // Stars to'lov tasdiqlandi, generatsiya boshlanadi
         setModalStep('generating');
         setPaymentLoading(false);
         dispatch(setProgress(10));
         pollGenerationStatus(currentGenerationRequestId);
       } else {
-        showAlertMessage('Stars to\'lovni tasdiqlashda xatolik');
+        console.error('⭐ Confirm payment failed:', confirmResult);
+        showAlertMessage(confirmResult?.message || 'Stars to\'lovni tasdiqlashda xatolik');
         setPaymentLoading(false);
         setModalStep('payment');
       }
     } catch (error: any) {
-      console.error('Stars payment confirmation error:', error);
+      console.error('⭐ Stars payment confirmation error:', error);
       showAlertMessage(error.message || 'To\'lovni tasdiqlashda xatolik');
       setPaymentLoading(false);
       setModalStep('payment');
@@ -300,17 +363,18 @@ export default function Home() {
   const checkPaymentAndGenerate = async () => {
     // 💳 CLICK: Faqat status tekshiramiz, confirm-payment CHAQIRILMAYDI
     // Webhook allaqachon generatsiyani boshlagan bo'lishi kerak
+    console.log('💳 checkPaymentAndGenerate called');
+
     if (!currentGenerationRequestId) {
+      console.error('💳 No generation request ID found');
       showAlertMessage('Generation request topilmadi');
       return;
     }
 
-    if (process.env.NODE_ENV === 'development') {
-      console.log('💳 Click payment check started, polling status...', {
-        generationRequestId: currentGenerationRequestId,
-        note: 'confirm-payment NOT called for Click',
-      });
-    }
+    console.log('💳 Click payment check started, polling status...', {
+      generationRequestId: currentGenerationRequestId,
+      note: 'confirm-payment NOT called for Click',
+    });
 
     setPaymentLoading(true);
 
@@ -318,9 +382,7 @@ export default function Home() {
       // Status tekshirish
       const statusResult = await api.getGenerationStatus(currentGenerationRequestId);
 
-      if (process.env.NODE_ENV === 'development') {
-        console.log('💳 Click status check result:', statusResult);
-      }
+      console.log('💳 Click status check result:', statusResult);
 
       if (
         statusResult.status === 'PENDING' ||
@@ -328,28 +390,32 @@ export default function Home() {
         statusResult.status === 'COMPLETED'
       ) {
         // ✅ Webhook ishlagan! Generatsiya boshlangan
+        console.log('💳 Payment confirmed by webhook! Starting generation...');
         setModalStep('generating');
         setPaymentLoading(false);
         dispatch(setProgress(10));
         pollGenerationStatus(currentGenerationRequestId);
-      } else if (statusResult.status === 'WAITING_PAYMENT') {
+      } else if (statusResult.status === 'WAITING_PAYMENT' || statusResult.status === 'awaiting_payment') {
         // ⏳ Webhook hali kelmagan, 3 soniyadan keyin qayta tekshiramiz
+        console.log('💳 Still waiting for payment webhook, checking again in 3s...');
         showAlertMessage('To\'lov kutilmoqda. Iltimos, biroz kuting...');
         setPaymentLoading(false);
         setTimeout(() => {
           checkPaymentAndGenerate();
         }, 3000);
-      } else if (statusResult.status === 'FAILED') {
-        showAlertMessage(statusResult.error || 'To\'lov amalga oshmadi');
+      } else if (statusResult.status === 'FAILED' || statusResult.status === 'error') {
+        console.error('💳 Payment failed:', statusResult);
+        showAlertMessage(statusResult.error || statusResult.message || 'To\'lov amalga oshmadi');
         setPaymentLoading(false);
         setModalStep('payment');
       } else {
-        showAlertMessage('To\'lov holati noma\'lum. Qayta urinib ko\'ring');
+        console.warn('💳 Unknown payment status:', statusResult.status);
+        showAlertMessage(`To'lov holati: ${statusResult.status}. Qayta urinib ko'ring`);
         setPaymentLoading(false);
         setModalStep('payment');
       }
     } catch (error: any) {
-      console.error('Click payment check error:', error);
+      console.error('💳 Click payment check error:', error);
       showAlertMessage(error.message || 'Holatni tekshirishda xatolik');
       setPaymentLoading(false);
     }
@@ -469,9 +535,15 @@ export default function Home() {
       {/* Templates Grid */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
         {loading && templates.length === 0 ? (
-          <div className="flex justify-center items-center py-20">
-            <div className="w-16 h-16 loader rounded-full" />
+          // Show skeleton loaders while loading
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <TemplateCardSkeleton key={index} />
+            ))}
           </div>
+        ) : !loading && templates.length === 0 ? (
+          // Show empty state when no templates
+          <EmptyState />
         ) : (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">

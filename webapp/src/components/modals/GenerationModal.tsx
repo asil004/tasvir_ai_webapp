@@ -54,20 +54,37 @@ export default function GenerationModal({ progress }: GenerationModalProps) {
         </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
         {uploadedImages.map((img, index) => (
-          <div key={index} className="relative">
-            <div className="aspect-square rounded-lg overflow-hidden border border-border opacity-50">
+          <div key={index} className="relative group">
+            <div className="aspect-square rounded-lg overflow-hidden border border-border relative">
+              {/* Image with overlay */}
               <img
                 src={img.preview}
                 alt={`Processing ${index + 1}`}
                 className="w-full h-full object-cover"
               />
+
+              {/* Shimmer overlay */}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-accent to-transparent opacity-20 animate-shimmer" />
+
+              {/* Dark overlay */}
+              <div className="absolute inset-0 bg-black bg-opacity-40" />
             </div>
+
+            {/* Processing indicator */}
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="animate-pulse bg-card bg-opacity-90 px-2 py-1 rounded-full">
-                <p className="text-xs font-mono">Wait...</p>
+              <div className="bg-card bg-opacity-95 px-3 py-1.5 rounded-full border border-accent shadow-lg">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-accent rounded-full animate-pulse" />
+                  <p className="text-xs font-mono text-accent">AI</p>
+                </div>
               </div>
+            </div>
+
+            {/* Corner badge */}
+            <div className="absolute top-2 right-2 bg-card bg-opacity-90 px-2 py-1 rounded-full border border-border">
+              <p className="text-xs font-mono text-secondary-text">{index + 1}</p>
             </div>
           </div>
         ))}
