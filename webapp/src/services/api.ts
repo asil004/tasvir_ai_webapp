@@ -38,6 +38,7 @@ apiClient.interceptors.response.use(
         status: error.response?.status,
         data: error.response?.data,
         message: error.message,
+        code: error.code,
       });
     }
 
@@ -48,15 +49,26 @@ apiClient.interceptors.response.use(
       const errorMessage = error.response.data?.message
         || error.response.data?.error
         || error.response.data?.detail
-        || `Server error: ${error.response.status}`;
+        || `Server xatosi (${error.response.status})`;
 
-      throw new Error(errorMessage);
+      const customError = new Error(errorMessage);
+      (customError as any).response = error.response;
+      throw customError;
     } else if (error.request) {
       // The request was made but no response was received
-      throw new Error('Server javob bermadi. Internetni tekshiring.');
+      // This could be network error, CORS, timeout, etc.
+      if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+        throw new Error('So\'rov vaqti tugadi. Qayta urinib ko\'ring.');
+      } else if (error.message.includes('Network Error')) {
+        throw new Error('Internet aloqasi yo\'q. Internetni tekshiring.');
+      } else {
+        // For other cases, just pass through the original error
+        // Don't throw a new error, return the original
+        return Promise.reject(error);
+      }
     } else {
       // Something happened in setting up the request that triggered an Error
-      throw new Error(error.message || 'So\'rov yuborishda xatolik');
+      return Promise.reject(error);
     }
   }
 );
@@ -102,34 +114,29 @@ const api = {
   },
 
   getGenerationStatus: async (requestId: number): Promise<GenerationRequest> => {
-    try {
-      console.log('🔍 Getting generation status for:', requestId);
+    console.log('🔍 Getting generation status for:', requestId);
 
-      const response = await apiClient.get(`/api/v1/generation/${requestId}`);
+    const response = await apiClient.get(`/api/v1/generation/${requestId}`);
 
-      console.log('🔍 Generation status response:', {
-        requestId,
-        status: response.data.status,
-        image_url: response.data.image_url,
-        error: response.data.error,
-      });
+    console.log('🔍 Generation status response:', {
+      requestId,
+      status: response.data.status,
+      image_url: response.data.image_url,
+      error: response.data.error,
+    });
 
-      // Validate response
-      if (!response.data) {
-        throw new Error('Empty response from status API');
-      }
-
-      // Ensure image_url is present when status is COMPLETED
-      if (response.data.status === 'COMPLETED' && !response.data.image_url) {
-        console.error('❌ Status is COMPLETED but no image_url!', response.data);
-        throw new Error('Image URL not found in completed generation');
-      }
-
-      return response.data;
-    } catch (error: any) {
-      console.error('❌ getGenerationStatus error:', error);
-      throw error;
+    // Validate response
+    if (!response.data) {
+      throw new Error('Bo\'sh javob qaytdi');
     }
+
+    // Ensure image_url is present when status is COMPLETED
+    if (response.data.status === 'COMPLETED' && !response.data.image_url) {
+      console.error('❌ Status is COMPLETED but no image_url!', response.data);
+      throw new Error('Rasm URL topilmadi');
+    }
+
+    return response.data;
   },
 
   downloadImage: async (url: string): Promise<Blob> => {
@@ -145,69 +152,59 @@ const api = {
     generationRequestId: number,
     paymentMethod: 'stars' | 'click'
   ): Promise<PaymentCreateResponse> => {
-    try {
-      console.log('💳 Sending payment request:', {
-        user_id: userId,
-        template_id: templateId,
-        generation_request_id: generationRequestId,
-        payment_method: paymentMethod,
-      });
+    console.log('💳 Sending payment request:', {
+      user_id: userId,
+      template_id: templateId,
+      generation_request_id: generationRequestId,
+      payment_method: paymentMethod,
+    });
 
-      const response = await apiClient.post(`/api/v1/create-payment`, {
-        user_id: userId,
-        template_id: templateId,
-        generation_request_id: generationRequestId,
-        payment_method: paymentMethod,
-      });
+    const response = await apiClient.post(`/api/v1/create-payment`, {
+      user_id: userId,
+      template_id: templateId,
+      generation_request_id: generationRequestId,
+      payment_method: paymentMethod,
+    });
 
-      console.log('💳 Payment response received:', response.data);
+    console.log('💳 Payment response received:', response.data);
 
-      // Validate response
-      if (!response.data) {
-        throw new Error('Empty response from payment API');
-      }
-
-      // For stars, check invoice_url
-      if (paymentMethod === 'stars' && !response.data.invoice_url) {
-        console.error('❌ Missing invoice_url in Stars response:', response.data);
-        throw new Error('Invoice URL not received from backend');
-      }
-
-      // For click, check payment_url
-      if (paymentMethod === 'click' && !response.data.payment_url) {
-        console.error('❌ Missing payment_url in Click response:', response.data);
-        throw new Error('Payment URL not received from backend');
-      }
-
-      return response.data;
-    } catch (error: any) {
-      console.error('❌ createPayment error:', error);
-      throw error;
+    // Validate response
+    if (!response.data) {
+      throw new Error('Bo\'sh javob qaytdi');
     }
+
+    // For stars, check invoice_url
+    if (paymentMethod === 'stars' && !response.data.invoice_url) {
+      console.error('❌ Missing invoice_url in Stars response:', response.data);
+      throw new Error('Invoice URL topilmadi');
+    }
+
+    // For click, check payment_url
+    if (paymentMethod === 'click' && !response.data.payment_url) {
+      console.error('❌ Missing payment_url in Click response:', response.data);
+      throw new Error('Payment URL topilmadi');
+    }
+
+    return response.data;
   },
 
   confirmPayment: async (
     generationRequestId: number,
     paymentMethod: 'stars' | 'click'
   ): Promise<PaymentConfirmResponse> => {
-    try {
-      console.log('✅ Sending payment confirmation:', {
-        generation_request_id: generationRequestId,
-        payment_method: paymentMethod,
-      });
+    console.log('✅ Sending payment confirmation:', {
+      generation_request_id: generationRequestId,
+      payment_method: paymentMethod,
+    });
 
-      const response = await apiClient.post(`/api/v1/confirm-payment`, {
-        generation_request_id: generationRequestId,
-        payment_method: paymentMethod,
-      });
+    const response = await apiClient.post(`/api/v1/confirm-payment`, {
+      generation_request_id: generationRequestId,
+      payment_method: paymentMethod,
+    });
 
-      console.log('✅ Payment confirmation response:', response.data);
+    console.log('✅ Payment confirmation response:', response.data);
 
-      return response.data;
-    } catch (error: any) {
-      console.error('❌ confirmPayment error:', error);
-      throw error;
-    }
+    return response.data;
   },
 };
 

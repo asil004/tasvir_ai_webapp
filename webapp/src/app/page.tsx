@@ -190,16 +190,27 @@ export default function Home() {
         templateId: selectedTemplateId,
         generationRequestId: generationResult.request_id,
         method,
+        apiUrl: process.env.NEXT_PUBLIC_API_BASE_URL,
       });
 
-      const paymentResult = await api.createPayment(
-        userId,
-        selectedTemplateId,
-        generationResult.request_id,
-        method
-      );
-
-      console.log('💳 Payment result:', paymentResult);
+      let paymentResult;
+      try {
+        paymentResult = await api.createPayment(
+          userId,
+          selectedTemplateId,
+          generationResult.request_id,
+          method
+        );
+        console.log('💳 Payment result:', paymentResult);
+      } catch (paymentError: any) {
+        console.error('💳 Payment creation failed:', {
+          message: paymentError.message,
+          response: paymentError.response?.data,
+          status: paymentError.response?.status,
+          url: paymentError.config?.url,
+        });
+        throw new Error(paymentError.message || 'To\'lov yaratishda xatolik');
+      }
 
       // Check if payment creation was successful (more flexible check)
       if (!paymentResult || (paymentResult.status && paymentResult.status === 'error')) {
