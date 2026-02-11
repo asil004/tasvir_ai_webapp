@@ -37,3 +37,5 @@ next-env.d.ts
 .next
 .claude
 .gi
+
+.env*.production
