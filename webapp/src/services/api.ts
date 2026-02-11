@@ -102,8 +102,34 @@ const api = {
   },
 
   getGenerationStatus: async (requestId: number): Promise<GenerationRequest> => {
-    const response = await apiClient.get(`/api/v1/generation/${requestId}`);
-    return response.data;
+    try {
+      console.log('🔍 Getting generation status for:', requestId);
+
+      const response = await apiClient.get(`/api/v1/generation/${requestId}`);
+
+      console.log('🔍 Generation status response:', {
+        requestId,
+        status: response.data.status,
+        image_url: response.data.image_url,
+        error: response.data.error,
+      });
+
+      // Validate response
+      if (!response.data) {
+        throw new Error('Empty response from status API');
+      }
+
+      // Ensure image_url is present when status is COMPLETED
+      if (response.data.status === 'COMPLETED' && !response.data.image_url) {
+        console.error('❌ Status is COMPLETED but no image_url!', response.data);
+        throw new Error('Image URL not found in completed generation');
+      }
+
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ getGenerationStatus error:', error);
+      throw error;
+    }
   },
 
   downloadImage: async (url: string): Promise<Blob> => {

@@ -391,10 +391,31 @@ export default function Home() {
       ) {
         // ✅ Webhook ishlagan! Generatsiya boshlangan
         console.log('💳 Payment confirmed by webhook! Starting generation...');
+        console.log('💳 Current generation request ID:', currentGenerationRequestId);
+
         setModalStep('generating');
         setPaymentLoading(false);
         dispatch(setProgress(10));
-        pollGenerationStatus(currentGenerationRequestId);
+
+        // If already completed, might need to handle immediately
+        if (statusResult.status === 'COMPLETED') {
+          console.log('💳 Already COMPLETED! Image URL:', statusResult.image_url);
+          if (statusResult.image_url) {
+            // Update Redux state directly
+            dispatch(checkGenerationStatus(currentGenerationRequestId));
+            // Show result immediately
+            setTimeout(() => {
+              setModalStep('result');
+            }, 500);
+          } else {
+            console.error('❌ COMPLETED but no image_url!');
+            showAlertMessage('Rasm topilmadi');
+            setModalStep('payment');
+          }
+        } else {
+          // Start polling
+          pollGenerationStatus(currentGenerationRequestId);
+        }
       } else if (statusResult.status === 'WAITING_PAYMENT' || statusResult.status === 'awaiting_payment') {
         // ⏳ Webhook hali kelmagan, 3 soniyadan keyin qayta tekshiramiz
         console.log('💳 Still waiting for payment webhook, checking again in 3s...');
@@ -461,37 +482,64 @@ export default function Home() {
   };
 
   const pollGenerationStatus = async (requestId: number) => {
+    console.log('🔄 Starting pollGenerationStatus for request:', requestId);
     let attempts = 0;
     const maxAttempts = 60;
 
     const poll = async () => {
       if (attempts >= maxAttempts) {
+        console.error('🔄 Max attempts reached, timing out');
         showAlertMessage('Vaqt tugadi. Qayta urinib ko\'ring');
         handleCloseModal();
         return;
       }
 
       try {
+        console.log(`🔄 Polling attempt ${attempts + 1}/${maxAttempts}`);
         const result = await dispatch(checkGenerationStatus(requestId)).unwrap();
 
+        console.log('🔄 Status check result:', {
+          status: result.status,
+          image_url: result.image_url,
+          request_id: result.request_id,
+          error: result.error,
+        });
+
         if (result.status === 'COMPLETED') {
+          console.log('✅ Generation COMPLETED!');
+          console.log('✅ Image URL:', result.image_url);
+          console.log('✅ Selected Template ID:', selectedTemplateId);
+
           dispatch(setProgress(100));
+
           if (selectedTemplateId) {
             dispatch(incrementTemplateUsage(selectedTemplateId));
           }
+
+          // Check if image_url exists
+          if (!result.image_url) {
+            console.error('❌ No image_url in completed result!');
+            showAlertMessage('Rasm URL topilmadi');
+            handleCloseModal();
+            return;
+          }
+
+          console.log('✅ Switching to result modal...');
           setTimeout(() => {
             setModalStep('result');
           }, 500);
-        } else if (result.status === 'FAILED') {
-          showAlertMessage(result.error || 'Generatsiya xatosi');
+        } else if (result.status === 'FAILED' || result.status === 'error') {
+          console.error('❌ Generation FAILED:', result.error || result.message);
+          showAlertMessage(result.error || result.message || 'Generatsiya xatosi');
           handleCloseModal();
         } else {
+          console.log(`⏳ Status: ${result.status}, continuing to poll...`);
           dispatch(setProgress(Math.min(40 + attempts * 5, 90)));
           attempts++;
           setTimeout(poll, 2000);
         }
-      } catch (error) {
-        console.error('Poll error:', error);
+      } catch (error: any) {
+        console.error('❌ Poll error:', error);
         attempts++;
         setTimeout(poll, 3000);
       }
@@ -596,13 +644,57 @@ export default function Home() {
           />
         )}
         {modalStep === 'generating' && <GenerationModal progress={progress} />}
-        {modalStep === 'result' && resultImageUrl && selectedTemplate && (
-          <ResultModal
-            imageUrl={resultImageUrl}
-            templateTitle={selectedTemplate.title}
-            onClose={handleCloseModal}
-          />
-        )}
+        {modalStep === 'result' && (() => {
+          console.log('🖼️ Result modal check:', {
+            modalStep,
+            resultImageUrl,
+            selectedTemplate: selectedTemplate?.id,
+            hasTemplate: !!selectedTemplate,
+          });
+
+          if (!resultImageUrl) {
+            console.error('❌ Result modal: No resultImageUrl!');
+            return (
+              <div className="text-center py-8">
+                <p className="text-red-500">Rasm URL topilmadi</p>
+                <button
+                  onClick={handleCloseModal}
+                  className="mt-4 btn-primary px-6 py-2 rounded-lg"
+                >
+                  Yopish
+                </button>
+              </div>
+            );
+          }
+
+          if (!selectedTemplate) {
+            console.error('❌ Result modal: No selectedTemplate!');
+            return (
+              <div className="text-center py-8">
+                <p className="text-red-500">Template topilmadi</p>
+                <button
+                  onClick={handleCloseModal}
+                  className="mt-4 btn-primary px-6 py-2 rounded-lg"
+                >
+                  Yopish
+                </button>
+              </div>
+            );
+          }
+
+          console.log('✅ Rendering ResultModal with:', {
+            imageUrl: resultImageUrl,
+            templateTitle: selectedTemplate.title,
+          });
+
+          return (
+            <ResultModal
+              imageUrl={resultImageUrl}
+              templateTitle={selectedTemplate.title}
+              onClose={handleCloseModal}
+            />
+          );
+        })()}
       </Modal>
 
       {/* Alert */}
