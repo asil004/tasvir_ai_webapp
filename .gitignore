@@ -1,5 +1,5 @@
 # Dependencies
-node_modules/
+webapp/node_modules/
 /.pnp
 .pnp.js
 
@@ -31,3 +31,9 @@ yarn-error.log*
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+.idea
+
+.next
+.claude
+.gi
