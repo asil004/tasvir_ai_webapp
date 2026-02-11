@@ -295,6 +295,7 @@ export default function Home() {
       setModalStep('payment');
     }
   };
+  //asdf
 
   const checkPaymentAndGenerate = async () => {
     // 💳 CLICK: Faqat status tekshiramiz, confirm-payment CHAQIRILMAYDI
