@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { Template, TemplatesResponse } from '@/types';
+import { Template, TemplatesResponse, Category, CategoriesResponse } from '@/types';
 import api from '@/services/api';
 
 interface TemplatesState {
@@ -10,6 +10,9 @@ interface TemplatesState {
   itemsPerPage: number;
   loading: boolean;
   error: string | null;
+  categories: Category[];
+  selectedCategoryId: number | null;
+  categoriesLoading: boolean;
 }
 
 const initialState: TemplatesState = {
@@ -20,12 +23,23 @@ const initialState: TemplatesState = {
   itemsPerPage: 6,
   loading: false,
   error: null,
+  categories: [],
+  selectedCategoryId: null,
+  categoriesLoading: false,
 };
+
+export const fetchCategories = createAsyncThunk(
+  'templates/fetchCategories',
+  async () => {
+    const response = await api.getCategories();
+    return response;
+  }
+);
 
 export const fetchTemplates = createAsyncThunk(
   'templates/fetchTemplates',
-  async ({ page, limit }: { page: number; limit: number }) => {
-    const response = await api.getTemplates(page, limit);
+  async ({ page, limit, categoryId }: { page: number; limit: number; categoryId?: number }) => {
+    const response = await api.getTemplates(page, limit, categoryId);
     return response;
   }
 );
@@ -37,6 +51,10 @@ const templatesSlice = createSlice({
     setPage: (state, action: PayloadAction<number>) => {
       state.currentPage = action.payload;
     },
+    setSelectedCategory: (state, action: PayloadAction<number | null>) => {
+      state.selectedCategoryId = action.payload;
+      state.currentPage = 1;
+    },
     incrementTemplateUsage: (state, action: PayloadAction<number>) => {
       const template = state.templates.find(t => t.id === action.payload);
       if (template) {
@@ -46,6 +64,16 @@ const templatesSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      .addCase(fetchCategories.pending, (state) => {
+        state.categoriesLoading = true;
+      })
+      .addCase(fetchCategories.fulfilled, (state, action: PayloadAction<CategoriesResponse>) => {
+        state.categoriesLoading = false;
+        state.categories = action.payload.categories;
+      })
+      .addCase(fetchCategories.rejected, (state) => {
+        state.categoriesLoading = false;
+      })
       .addCase(fetchTemplates.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -64,5 +92,5 @@ const templatesSlice = createSlice({
   },
 });
 
-export const { setPage, incrementTemplateUsage } = templatesSlice.actions;
+export const { setPage, setSelectedCategory, incrementTemplateUsage } = templatesSlice.actions;
 export default templatesSlice.reducer;

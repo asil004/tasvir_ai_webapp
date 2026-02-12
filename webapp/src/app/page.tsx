@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store';
-import { fetchTemplates, setPage, incrementTemplateUsage } from '@/store/slices/templatesSlice';
+import { fetchTemplates, fetchCategories, setPage, setSelectedCategory, incrementTemplateUsage } from '@/store/slices/templatesSlice';
 import {
   setSelectedTemplate,
   resetGeneration,
@@ -19,6 +19,7 @@ import Pagination from '@/components/Pagination';
 import Modal from '@/components/Modal';
 import Alert from '@/components/Alert';
 import DevModeIndicator from '@/components/DevModeIndicator';
+import CategoryTabs from '@/components/CategoryTabs';
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
 import SubscriptionModal from '@/components/modals/SubscriptionModal';
 import PaymentModal from '@/components/modals/PaymentModal';
@@ -43,7 +44,7 @@ export default function Home() {
   const [currentGenerationRequestId, setCurrentGenerationRequestId] = useState<number | null>(null);
   const [currentGateway, setCurrentGateway] = useState<'CLICK' | 'STARS' | 'SUBGRAM' | 'FREE'>('FREE');
 
-  const { templates, currentPage, totalPages, itemsPerPage, loading } = useAppSelector(
+  const { templates, currentPage, totalPages, itemsPerPage, loading, categories, selectedCategoryId, categoriesLoading } = useAppSelector(
     (state) => state.templates
   );
   const {
@@ -61,6 +62,7 @@ export default function Home() {
   useEffect(() => {
     setMounted(true);
     expandTelegramWebApp();
+    dispatch(fetchCategories());
     dispatch(fetchTemplates({ page: 1, limit: itemsPerPage }));
   }, [dispatch, itemsPerPage]);
 
@@ -71,6 +73,11 @@ export default function Home() {
       console.log('Is Telegram WebApp:', typeof window !== 'undefined' && !!window.Telegram?.WebApp);
     }
   }, [mounted, telegramUser]);
+
+  const handleCategorySelect = (categoryId: number | null) => {
+    dispatch(setSelectedCategory(categoryId));
+    dispatch(fetchTemplates({ page: 1, limit: itemsPerPage, categoryId: categoryId ?? undefined }));
+  };
 
   const handleTemplateClick = (templateId: number) => {
     dispatch(setSelectedTemplate(templateId));
@@ -635,7 +642,7 @@ export default function Home() {
   const handlePageChange = (direction: 'prev' | 'next') => {
     const newPage = direction === 'next' ? currentPage + 1 : currentPage - 1;
     dispatch(setPage(newPage));
-    dispatch(fetchTemplates({ page: newPage, limit: itemsPerPage }));
+    dispatch(fetchTemplates({ page: newPage, limit: itemsPerPage, categoryId: selectedCategoryId ?? undefined }));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -661,6 +668,12 @@ export default function Home() {
 
       {/* Templates Grid */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
+        <CategoryTabs
+          categories={categories}
+          selectedId={selectedCategoryId}
+          onSelect={handleCategorySelect}
+          loading={categoriesLoading}
+        />
         {loading && templates.length === 0 ? (
           // Show skeleton loaders while loading
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">

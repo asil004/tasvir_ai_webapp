@@ -1,6 +1,7 @@
 import axios from 'axios';
 import {
   TemplatesResponse,
+  CategoriesResponse,
   GenerationRequest,
   SubscriptionCheckResponse,
   PaymentCreateResponse,
@@ -140,10 +141,17 @@ apiClient.interceptors.response.use(
 );
 
 const api = {
-  getTemplates: async (page: number = 1, limit: number = 6): Promise<TemplatesResponse> => {
-    const response = await apiClient.get(`/api/v1/templates`, {
-      params: { page, limit },
-    });
+  getCategories: async (): Promise<CategoriesResponse> => {
+    const response = await apiClient.get(`/api/v1/categories`);
+    return response.data;
+  },
+
+  getTemplates: async (page: number = 1, limit: number = 6, categoryId?: number): Promise<TemplatesResponse> => {
+    const params: Record<string, number> = { page, limit };
+    if (categoryId) {
+      params.category_id = categoryId;
+    }
+    const response = await apiClient.get(`/api/v1/templates`, { params });
     return response.data;
   },
 

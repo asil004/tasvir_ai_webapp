@@ -1,3 +1,14 @@
+export interface Category {
+  id: number;
+  name: string;
+  order: number;
+}
+
+export interface CategoriesResponse {
+  categories: Category[];
+  total: number;
+}
+
 export interface Template {
   id: number;
   title: string;
@@ -8,6 +19,7 @@ export interface Template {
   priceStars?: number;
   priceUzs?: number;
   size?: string;
+  category?: { id: number; name: string } | null;
 }
 
 export interface TemplatesResponse {
