@@ -36,13 +36,6 @@ const nextConfig = {
     config.resolve.alias['@'] = path.resolve(__dirname, 'src');
     return config;
   },
-  // Increase body size limit for file uploads (default is 1MB)
-  serverExternalPackages: [],
-  experimental: {
-    serverActions: {
-      bodySizeLimit: '20mb',
-    },
-  },
   async rewrites() {
     const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
     return [

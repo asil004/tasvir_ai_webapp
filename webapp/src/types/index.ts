@@ -154,6 +154,7 @@ export interface TelegramWebApp {
   showAlert: (message: string, callback?: () => void) => void;
   showConfirm: (message: string, callback?: (confirmed: boolean) => void) => void;
   openInvoice: (url: string, callback?: (status: 'paid' | 'cancelled' | 'failed' | 'pending') => void) => void;
+  openLink: (url: string, options?: { try_instant_view?: boolean }) => void;
   ready: () => void;
   expand: () => void;
   close: () => void;
