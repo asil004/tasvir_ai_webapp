@@ -159,7 +159,8 @@ const api = {
     templateId: number,
     userId: number,
     images: File[],
-    paymentVerified: boolean = false
+    paymentVerified: boolean = false,
+    gateway: 'CLICK' | 'STARS' | 'SUBGRAM' | 'FREE' = 'FREE'
   ): Promise<GenerationRequest> => {
     // Compress images before uploading (max 2MB each, max 1920px dimension)
     const compressedImages = await Promise.all(
@@ -179,6 +180,7 @@ const api = {
     formData.append('template_id', templateId.toString());
     formData.append('user_id', userId.toString());
     formData.append('payment_verified', paymentVerified.toString());
+    formData.append('gateway', gateway);
 
     compressedImages.forEach((image) => {
       formData.append('images', image);

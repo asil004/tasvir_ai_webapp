@@ -41,6 +41,7 @@ export default function Home() {
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'stars' | 'click' | null>(null);
   const [currentGenerationRequestId, setCurrentGenerationRequestId] = useState<number | null>(null);
+  const [currentGateway, setCurrentGateway] = useState<'CLICK' | 'STARS' | 'SUBGRAM' | 'FREE'>('FREE');
 
   const { templates, currentPage, totalPages, itemsPerPage, loading } = useAppSelector(
     (state) => state.templates
@@ -81,6 +82,7 @@ export default function Home() {
     dispatch(resetGeneration());
     setSelectedPaymentMethod(null);
     setCurrentGenerationRequestId(null);
+    setCurrentGateway('FREE');
     setPaymentLoading(false);
   };
 
@@ -130,12 +132,14 @@ export default function Home() {
       // Agar to'lov kerak bo'lmasa, lekin kanallar bor (subscribed to bo'lmagan)
       else if (!result.subscribed || (result.sponsors && result.sponsors.length > 0)) {
         // SubGram kanallar modalini ko'rsatish
+        setCurrentGateway('SUBGRAM');
         setModalStep('subscription');
       }
       // Faqat ikkala shart ham bajarilsa generatsiya boshlaydi:
       // 1. To'lov kerak emas (requires_payment: false)
       // 2. Obuna tasdiqlangan (subscribed: true) va kanallar yo'q
       else {
+        setCurrentGateway(result.sponsors && result.sponsors.length > 0 ? 'SUBGRAM' : 'FREE');
         setModalStep('generating');
         await handleStartGeneration();
       }
@@ -172,7 +176,8 @@ export default function Home() {
         selectedTemplateId,
         userId,
         files,
-        false // payment_verified = false
+        false, // payment_verified = false
+        method === 'stars' ? 'STARS' : 'CLICK'
       );
 
       console.log('📸 Generation result:', generationResult);
@@ -499,12 +504,13 @@ export default function Home() {
 
     try {
       const files = uploadedImages.map((img) => img.file);
-      // Generate with payment_verified = true (free)
+      // Generate with payment_verified = true (free/subgram)
       const result = await api.generateImage(
         selectedTemplateId,
         userId,
         files,
-        true // payment_verified = true for free generation
+        true, // payment_verified = true for free generation
+        currentGateway
       );
 
       if (result.status === 'generating' && result.request_id) {
