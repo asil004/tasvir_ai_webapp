@@ -7,6 +7,8 @@ interface SubscriptionState {
   sponsors: SubGramSponsor[];
   isSubscribed: boolean;
   requiresPayment: boolean;
+  hasFreeImages: boolean;
+  gateway: string | null;
   priceStars: number | null;
   priceUzs: number | null;
   loading: boolean;
@@ -18,6 +20,8 @@ const initialState: SubscriptionState = {
   sponsors: [],
   isSubscribed: false,
   requiresPayment: false,
+  hasFreeImages: false,
+  gateway: null,
   priceStars: null,
   priceUzs: null,
   loading: false,
@@ -47,6 +51,8 @@ const subscriptionSlice = createSlice({
       state.sponsors = [];
       state.isSubscribed = false;
       state.requiresPayment = false;
+      state.hasFreeImages = false;
+      state.gateway = null;
       state.priceStars = null;
       state.priceUzs = null;
       state.error = null;
@@ -62,6 +68,8 @@ const subscriptionSlice = createSlice({
         state.loading = false;
         state.isSubscribed = action.payload.subscribed;
         state.requiresPayment = action.payload.requires_payment || false;
+        state.hasFreeImages = action.payload.has_free_images || false;
+        state.gateway = action.payload.gateway || null;
 
         // Template price from template_price object
         if (action.payload.template_price) {

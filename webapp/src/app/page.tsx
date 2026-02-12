@@ -118,31 +118,39 @@ export default function Home() {
         console.log('Subscription check result:', {
           requires_payment: result.requires_payment,
           subscribed: result.subscribed,
+          has_free_images: result.has_free_images,
+          gateway: result.gateway,
           sponsors_count: result.sponsors?.length || 0,
           price_stars: result.template_price?.price_stars,
           price_uzs: result.template_price?.price_uzs,
         });
       }
 
-      // Birinchi to'lov kerakligini tekshiramiz
-      if (result.requires_payment) {
-        // To'lov modal ko'rsatish
-        setModalStep('payment');
-      }
-      // Agar to'lov kerak bo'lmasa, lekin kanallar bor (subscribed to bo'lmagan)
-      else if (!result.subscribed || (result.sponsors && result.sponsors.length > 0)) {
-        // SubGram kanallar modalini ko'rsatish
-        setCurrentGateway('SUBGRAM');
-        setModalStep('subscription');
-      }
-      // Faqat ikkala shart ham bajarilsa generatsiya boshlaydi:
-      // 1. To'lov kerak emas (requires_payment: false)
-      // 2. Obuna tasdiqlangan (subscribed: true) va kanallar yo'q
-      else {
-        setCurrentGateway(result.sponsors && result.sponsors.length > 0 ? 'SUBGRAM' : 'FREE');
+      // 1. Free image bor → to'g'ridan-to'g'ri generate
+      if (result.has_free_images) {
+        setCurrentGateway('FREE');
         setModalStep('generating');
         await handleStartGeneration();
+        return;
       }
+
+      // 2. SubGram kanallar bor → obuna modal
+      if (!result.requires_payment && result.sponsors && result.sponsors.length > 0) {
+        setCurrentGateway('SUBGRAM');
+        setModalStep('subscription');
+        return;
+      }
+
+      // 3. To'lov kerak → payment modal
+      if (result.requires_payment) {
+        setModalStep('payment');
+        return;
+      }
+
+      // 4. Hech narsa kerak emas (edge case) → generate
+      setCurrentGateway((result.gateway as typeof currentGateway) || 'FREE');
+      setModalStep('generating');
+      await handleStartGeneration();
     } catch (error) {
       console.error('Subscription check error:', error);
       showAlertMessage('Obunani tekshirishda xatolik', 'error');

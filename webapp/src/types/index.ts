@@ -50,6 +50,8 @@ export interface TemplatePrice {
 export interface SubscriptionCheckResponse {
   subscribed: boolean;
   requires_payment: boolean;
+  has_free_images?: boolean;
+  gateway?: string;
   sponsors?: SubGramSponsor[];
   template_price?: TemplatePrice;
 }
