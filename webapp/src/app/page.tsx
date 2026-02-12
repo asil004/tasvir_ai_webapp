@@ -290,18 +290,8 @@ export default function Home() {
 
         console.log('💳 Opening Click payment URL:', paymentResult.payment_url);
 
-        // Open Click payment in new window
-        const paymentWindow = window.open(paymentResult.payment_url, '_blank');
-        if (!paymentWindow) {
-          console.error('❌ Popup blocked');
-          showAlertMessage('Popup blocker o\'chirilgan. Iltimos, ruxsat bering.');
-          setPaymentLoading(false);
-          setModalStep('payment');
-          return;
-        }
-
-        console.log('💳 Click payment window opened successfully');
-        setModalStep('payment_waiting');
+        // Navigate directly to payment URL (popup blockers won't interfere)
+        window.location.href = paymentResult.payment_url;
         setPaymentLoading(false);
       } else {
         console.error('❌ Invalid payment method or response:', { method, paymentResult });
