@@ -596,6 +596,9 @@ export default function Home() {
 
   const translateError = (raw: string): string => {
     const lower = raw.toLowerCase();
+    if (lower.includes('sexual') || (lower.includes('safety') && lower.includes('sexual'))) {
+      return 'Yuklangan rasm xavfsizlik tekshiruvidan o\'tmadi. Rasmlarda ochiq sahnalar yo\'qligiga ishonch hosil qiling va qayta urinib ko\'ring.';
+    }
     if (lower.includes('moderation_blocked') || lower.includes('safety_violation') || lower.includes('safety system')) {
       return 'Yuklangan rasm xavfsizlik tekshiruvidan o\'tmadi. Iltimos, boshqa rasm yuklang.';
     }
