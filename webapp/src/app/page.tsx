@@ -574,8 +574,9 @@ export default function Home() {
             setModalStep('result');
           }, 500);
         } else if (result.status === 'FAILED' || result.status === 'error') {
-          console.error('❌ Generation FAILED:', result.error || result.message);
-          showAlertMessage(result.error || result.message || 'Generatsiya xatosi');
+          const rawError = result.error || result.message || 'Generatsiya xatosi';
+          console.error('❌ Generation FAILED:', rawError);
+          showAlertMessage(translateError(rawError), 'error', rawError);
           handleCloseModal();
         } else {
           console.log(`⏳ Status: ${result.status}, continuing to poll...`);
@@ -591,6 +592,26 @@ export default function Home() {
     };
 
     await poll();
+  };
+
+  const translateError = (raw: string): string => {
+    const lower = raw.toLowerCase();
+    if (lower.includes('moderation_blocked') || lower.includes('safety_violation') || lower.includes('safety system')) {
+      return 'Yuklangan rasm xavfsizlik tekshiruvidan o\'tmadi. Iltimos, boshqa rasm yuklang.';
+    }
+    if (lower.includes('rate_limit') || lower.includes('rate limit')) {
+      return 'So\'rovlar limiti tugadi. Biroz kutib qayta urinib ko\'ring.';
+    }
+    if (lower.includes('invalid_image') || lower.includes('could not process')) {
+      return 'Rasm formati noto\'g\'ri yoki buzilgan. Boshqa rasm yuklang.';
+    }
+    if (lower.includes('timeout') || lower.includes('timed out')) {
+      return 'Rasm yaratish vaqti tugadi. Qayta urinib ko\'ring.';
+    }
+    if (lower.includes('billing') || lower.includes('quota')) {
+      return 'Tizimda vaqtinchalik muammo. Keyinroq urinib ko\'ring.';
+    }
+    return raw;
   };
 
   const showAlertMessage = (message: string, type: 'success' | 'error' = 'success', errorDetail?: string) => {
