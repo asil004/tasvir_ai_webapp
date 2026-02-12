@@ -192,35 +192,49 @@ const api = {
       template_id: templateId,
       generation_request_id: generationRequestId,
       payment_method: paymentMethod,
+      timestamp: new Date().toISOString(),
     });
 
-    const response = await apiClient.post(`/api/v1/create-payment`, {
-      user_id: userId,
-      template_id: templateId,
-      generation_request_id: generationRequestId,
-      payment_method: paymentMethod,
-    });
+    try {
+      // Longer timeout for payment requests (60 seconds)
+      const response = await apiClient.post(`/api/v1/create-payment`, {
+        user_id: userId,
+        template_id: templateId,
+        generation_request_id: generationRequestId,
+        payment_method: paymentMethod,
+      }, {
+        timeout: 60000, // 60 seconds
+      });
 
-    console.log('💳 Payment response received:', response.data);
+      console.log('💳 Payment response received:', response.data);
 
-    // Validate response
-    if (!response.data) {
-      throw new Error('Bo\'sh javob qaytdi');
+      // Validate response
+      if (!response.data) {
+        throw new Error('Bo\'sh javob qaytdi');
+      }
+
+      // For stars, check invoice_url
+      if (paymentMethod === 'stars' && !response.data.invoice_url) {
+        console.error('❌ Missing invoice_url in Stars response:', response.data);
+        throw new Error('Invoice URL topilmadi');
+      }
+
+      // For click, check payment_url
+      if (paymentMethod === 'click' && !response.data.payment_url) {
+        console.error('❌ Missing payment_url in Click response:', response.data);
+        throw new Error('Payment URL topilmadi');
+      }
+
+      return response.data;
+    } catch (error: any) {
+      console.error('💳 Payment request failed:', {
+        message: error.message,
+        code: error.code,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+      throw error;
     }
-
-    // For stars, check invoice_url
-    if (paymentMethod === 'stars' && !response.data.invoice_url) {
-      console.error('❌ Missing invoice_url in Stars response:', response.data);
-      throw new Error('Invoice URL topilmadi');
-    }
-
-    // For click, check payment_url
-    if (paymentMethod === 'click' && !response.data.payment_url) {
-      console.error('❌ Missing payment_url in Click response:', response.data);
-      throw new Error('Payment URL topilmadi');
-    }
-
-    return response.data;
   },
 
   confirmPayment: async (

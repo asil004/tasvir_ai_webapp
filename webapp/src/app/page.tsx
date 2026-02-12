@@ -311,14 +311,26 @@ export default function Home() {
         message: error.message,
         response: error.response?.data,
         status: error.response?.status,
+        code: error.code,
+        isTimeout: error.code === 'ECONNABORTED',
       });
 
       // Show more detailed error message
-      const errorMessage = error.response?.data?.message
-        || error.response?.data?.error
-        || error.message
-        || 'To\'lov yaratishda xatolik';
+      let errorMessage = 'To\'lov yaratishda xatolik';
 
+      if (error.code === 'ECONNABORTED') {
+        errorMessage = 'So\'rov vaqti tugadi. Qayta urinib ko\'ring.';
+      } else if (error.message?.includes('Network Error')) {
+        errorMessage = 'Backend\'ga ulanib bo\'lmadi. Internet tekshiring.';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      console.error('❌ Showing error to user:', errorMessage);
       showAlertMessage(errorMessage);
       setPaymentLoading(false);
       setModalStep('payment');
