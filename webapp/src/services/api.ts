@@ -7,6 +7,7 @@ import {
   PaymentConfirmResponse
 } from '@/types';
 import { sendErrorReport, collectTelegramInfo, type ErrorDetails } from '@/utils/telegram';
+import { compressImage } from '@/utils/helpers';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
 
@@ -90,6 +91,13 @@ apiClient.interceptors.response.use(
 
     // Return a more detailed error
     if (error.response) {
+      // Handle 413 specifically
+      if (error.response.status === 413) {
+        const customError = new Error('Fayllar hajmi juda katta. Kichikroq rasmlar yuklang (har biri 2MB dan kam).');
+        (customError as any).response = error.response;
+        throw customError;
+      }
+
       // The request was made and the server responded with a status code
       // that falls out of the range of 2xx
       const errorMessage = error.response.data?.message
@@ -153,12 +161,26 @@ const api = {
     images: File[],
     paymentVerified: boolean = false
   ): Promise<GenerationRequest> => {
+    // Compress images before uploading (max 2MB each, max 1920px dimension)
+    const compressedImages = await Promise.all(
+      images.map(async (img) => {
+        try {
+          const compressed = await compressImage(img, 2 * 1024 * 1024, 1920);
+          console.log(`📸 Compressed ${img.name}: ${(img.size / 1024).toFixed(0)}KB → ${(compressed.size / 1024).toFixed(0)}KB`);
+          return compressed;
+        } catch (err) {
+          console.warn(`📸 Compression failed for ${img.name}, using original`, err);
+          return img;
+        }
+      })
+    );
+
     const formData = new FormData();
     formData.append('template_id', templateId.toString());
     formData.append('user_id', userId.toString());
     formData.append('payment_verified', paymentVerified.toString());
 
-    images.forEach((image) => {
+    compressedImages.forEach((image) => {
       formData.append('images', image);
     });
 

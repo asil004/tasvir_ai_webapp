@@ -135,16 +135,6 @@ export const collectTelegramInfo = (): Pick<ErrorDetails, 'telegramVersion' | 'p
 export const sendErrorReport = (details: ErrorDetails): void => {
   const report = buildErrorReport(details);
 
-  // Strategy A: Try sendBeacon to backend
-  try {
-    if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
-      const blob = new Blob([JSON.stringify(details)], { type: 'application/json' });
-      navigator.sendBeacon('/api/v1/error-log', blob);
-    }
-  } catch {
-    // sendBeacon failed, continue to other strategies
-  }
-
   // Strategy B: Show in Telegram popup (truncated to fit)
   const tg = getTelegramWebApp();
   if (tg) {
