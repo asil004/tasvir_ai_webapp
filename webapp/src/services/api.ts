@@ -9,10 +9,16 @@ import {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
 
+// In the browser, use relative URLs so requests go through Next.js rewrites (same origin).
+// This avoids mixed content (HTTPS->HTTP) issues in Telegram WebApp.
+// On the server side (SSR), use the full backend URL directly.
+const EFFECTIVE_BASE_URL = typeof window !== 'undefined' ? '' : API_BASE_URL;
+
 console.log('🌐 API_BASE_URL:', API_BASE_URL);
+console.log('🌐 EFFECTIVE_BASE_URL:', EFFECTIVE_BASE_URL);
 
 const apiClient = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: EFFECTIVE_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -22,7 +28,7 @@ const apiClient = axios.create({
 // Test connection on startup
 if (typeof window !== 'undefined') {
   console.log('🔌 Testing backend connection...');
-  fetch(`${API_BASE_URL}/api/v1/templates?page=1&limit=1`)
+  fetch(`/api/v1/templates?page=1&limit=1`)
     .then(res => {
       if (res.ok) {
         console.log('✅ Backend connection OK');
