@@ -6,6 +6,7 @@ import {
   PaymentCreateResponse,
   PaymentConfirmResponse
 } from '@/types';
+import { sendErrorReport, collectTelegramInfo, type ErrorDetails } from '@/utils/telegram';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
 
@@ -55,7 +56,7 @@ apiClient.interceptors.response.use(
     return response;
   },
   (error) => {
-    // Log errors in development WITH FULL DETAILS
+    // Log errors WITH FULL DETAILS
     console.error('❌ API Error FULL DETAILS:', {
       url: error.config?.url,
       method: error.config?.method,
@@ -70,6 +71,22 @@ apiClient.interceptors.response.use(
       request: error.request ? 'present' : 'missing',
       response: error.response ? 'present' : 'missing',
     });
+
+    // Send error report to Telegram
+    if (typeof window !== 'undefined') {
+      const tgInfo = collectTelegramInfo();
+      const errorDetails: ErrorDetails = {
+        url: error.config?.url,
+        method: error.config?.method?.toUpperCase(),
+        status: error.response?.status || error.code || 'Network Error',
+        message: error.message,
+        code: error.code,
+        timestamp: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+        ...tgInfo,
+      };
+      sendErrorReport(errorDetails);
+    }
 
     // Return a more detailed error
     if (error.response) {

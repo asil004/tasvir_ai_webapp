@@ -90,3 +90,105 @@ export const setTelegramBackgroundColor = (color: string): void => {
     tg.backgroundColor = color;
   }
 };
+
+// === Error Reporting ===
+
+export interface ErrorDetails {
+  url?: string;
+  method?: string;
+  status?: number | string;
+  message: string;
+  code?: string;
+  timestamp: string;
+  userAgent: string;
+  telegramVersion?: string;
+  platform?: string;
+  initDataLength?: number;
+}
+
+export const buildErrorReport = (details: ErrorDetails): string => {
+  const lines = [
+    'ERROR REPORT',
+    `Time: ${details.timestamp}`,
+    `URL: ${details.url || 'N/A'}`,
+    `Method: ${details.method || 'N/A'}`,
+    `Status: ${details.status || 'N/A'}`,
+    `Message: ${details.message}`,
+    `Code: ${details.code || 'N/A'}`,
+    `User Agent: ${details.userAgent}`,
+    `TG Version: ${details.telegramVersion || 'N/A'}`,
+    `Platform: ${details.platform || 'N/A'}`,
+    `initData len: ${details.initDataLength ?? 'N/A'}`,
+  ];
+  return lines.join('\n');
+};
+
+export const collectTelegramInfo = (): Pick<ErrorDetails, 'telegramVersion' | 'platform' | 'initDataLength'> => {
+  const tg = getTelegramWebApp();
+  return {
+    telegramVersion: tg?.version,
+    platform: tg?.platform,
+    initDataLength: tg?.initData?.length,
+  };
+};
+
+export const sendErrorReport = (details: ErrorDetails): void => {
+  const report = buildErrorReport(details);
+
+  // Strategy A: Try sendBeacon to backend
+  try {
+    if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+      const blob = new Blob([JSON.stringify(details)], { type: 'application/json' });
+      navigator.sendBeacon('/api/v1/error-log', blob);
+    }
+  } catch {
+    // sendBeacon failed, continue to other strategies
+  }
+
+  // Strategy B: Show in Telegram popup (truncated to fit)
+  const tg = getTelegramWebApp();
+  if (tg) {
+    const truncated = report.length > 200 ? report.substring(0, 197) + '...' : report;
+    try {
+      tg.showPopup({
+        title: 'Error Detail',
+        message: truncated,
+        buttons: [{ type: 'ok' }],
+      });
+    } catch {
+      try {
+        tg.showAlert(truncated);
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  // Strategy C: Copy to clipboard
+  copyErrorToClipboard(report);
+};
+
+export const copyErrorToClipboard = async (text: string): Promise<boolean> => {
+  try {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // Clipboard API failed, try fallback
+    try {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  return false;
+};

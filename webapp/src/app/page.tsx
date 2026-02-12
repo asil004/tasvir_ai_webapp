@@ -25,7 +25,7 @@ import PaymentModal from '@/components/modals/PaymentModal';
 import PaymentWaitingModal from '@/components/modals/PaymentWaitingModal';
 import GenerationModal from '@/components/modals/GenerationModal';
 import ResultModal from '@/components/modals/ResultModal';
-import { expandTelegramWebApp, getTelegramUser, getTelegramWebApp, isInvoiceSupported } from '@/utils/telegram';
+import { expandTelegramWebApp, getTelegramUser, getTelegramWebApp, isInvoiceSupported, buildErrorReport, collectTelegramInfo, type ErrorDetails } from '@/utils/telegram';
 import api from '@/services/api';
 
 type ModalStep = 'closed' | 'upload' | 'subscription' | 'checking' | 'payment' | 'payment_waiting' | 'generating' | 'result';
@@ -35,6 +35,8 @@ export default function Home() {
   const [modalStep, setModalStep] = useState<ModalStep>('closed');
   const [alertMessage, setAlertMessage] = useState('');
   const [showAlert, setShowAlert] = useState(false);
+  const [alertType, setAlertType] = useState<'success' | 'error'>('success');
+  const [alertErrorDetail, setAlertErrorDetail] = useState<string | undefined>(undefined);
   const [mounted, setMounted] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'stars' | 'click' | null>(null);
@@ -139,7 +141,7 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Subscription check error:', error);
-      showAlertMessage('Obunani tekshirishda xatolik');
+      showAlertMessage('Obunani tekshirishda xatolik', 'error');
       setModalStep('upload');
     }
   };
@@ -307,13 +309,22 @@ export default function Home() {
       }
     } catch (error: any) {
       console.error('❌ Payment creation error:', error);
-      console.error('❌ Error details:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
+
+      // Collect full error details for debugging
+      const tgInfo = collectTelegramInfo();
+      const errorDetails: ErrorDetails = {
+        url: error.config?.url || '/api/v1/create-payment',
+        method: error.config?.method?.toUpperCase() || 'POST',
+        status: error.response?.status || error.code || 'Network Error',
+        message: error.message || 'Unknown error',
         code: error.code,
-        isTimeout: error.code === 'ECONNABORTED',
-      });
+        timestamp: new Date().toISOString(),
+        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'N/A',
+        ...tgInfo,
+      };
+
+      const errorReport = buildErrorReport(errorDetails);
+      console.error('❌ Error report:\n', errorReport);
 
       // Show more detailed error message
       let errorMessage = 'To\'lov yaratishda xatolik';
@@ -330,8 +341,8 @@ export default function Home() {
         errorMessage = error.message;
       }
 
-      console.error('❌ Showing error to user:', errorMessage);
-      showAlertMessage(errorMessage);
+      // Show error with copy-able detail
+      showAlertMessage(errorMessage, 'error', errorReport);
       setPaymentLoading(false);
       setModalStep('payment');
     }
@@ -372,13 +383,13 @@ export default function Home() {
         pollGenerationStatus(currentGenerationRequestId);
       } else {
         console.error('⭐ Confirm payment failed:', confirmResult);
-        showAlertMessage(confirmResult?.message || 'Stars to\'lovni tasdiqlashda xatolik');
+        showAlertMessage(confirmResult?.message || 'Stars to\'lovni tasdiqlashda xatolik', 'error');
         setPaymentLoading(false);
         setModalStep('payment');
       }
     } catch (error: any) {
       console.error('⭐ Stars payment confirmation error:', error);
-      showAlertMessage(error.message || 'To\'lovni tasdiqlashda xatolik');
+      showAlertMessage(error.message || 'To\'lovni tasdiqlashda xatolik', 'error');
       setPaymentLoading(false);
       setModalStep('payment');
     }
@@ -461,7 +472,7 @@ export default function Home() {
       }
     } catch (error: any) {
       console.error('💳 Click payment check error:', error);
-      showAlertMessage(error.message || 'Holatni tekshirishda xatolik');
+      showAlertMessage(error.message || 'Holatni tekshirishda xatolik', 'error');
       setPaymentLoading(false);
     }
   };
@@ -500,7 +511,7 @@ export default function Home() {
       }
     } catch (error: any) {
       console.error('Generation error:', error);
-      showAlertMessage(error.message || 'Xatolik yuz berdi');
+      showAlertMessage(error.message || 'Xatolik yuz berdi', 'error');
       handleCloseModal();
     }
   };
@@ -572,8 +583,10 @@ export default function Home() {
     await poll();
   };
 
-  const showAlertMessage = (message: string) => {
+  const showAlertMessage = (message: string, type: 'success' | 'error' = 'success', errorDetail?: string) => {
     setAlertMessage(message);
+    setAlertType(type);
+    setAlertErrorDetail(errorDetail);
     setShowAlert(true);
   };
 
@@ -726,6 +739,8 @@ export default function Home() {
         message={alertMessage}
         show={showAlert}
         onClose={() => setShowAlert(false)}
+        type={alertType}
+        errorDetail={alertErrorDetail}
       />
 
       {/* Development Mode Indicator */}
