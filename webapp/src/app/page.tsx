@@ -290,9 +290,22 @@ export default function Home() {
 
         console.log('💳 Opening Click payment URL:', paymentResult.payment_url);
 
-        // Navigate directly to payment URL (popup blockers won't interfere)
-        window.location.href = paymentResult.payment_url;
-        setPaymentLoading(false);
+        // Use Telegram's openLink to open in external browser (no popup blocker issues)
+        const tg = getTelegramWebApp();
+        if (tg && typeof tg.openLink === 'function') {
+          tg.showConfirm('Click orqali to\'lov sahifasiga o\'tasizmi?', (confirmed) => {
+            if (confirmed) {
+              tg.openLink(paymentResult.payment_url);
+              setModalStep('payment_waiting');
+            }
+            setPaymentLoading(false);
+          });
+        } else {
+          // Fallback for non-Telegram browsers
+          window.open(paymentResult.payment_url, '_blank');
+          setModalStep('payment_waiting');
+          setPaymentLoading(false);
+        }
       } else {
         console.error('❌ Invalid payment method or response:', { method, paymentResult });
         throw new Error('Invalid payment response');
