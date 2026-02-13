@@ -13,7 +13,7 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="sticky top-0 z-50 backdrop-blur-xl border-b border-border bg-primary-bg/80">
+    <nav className="sticky top-0 z-50 backdrop-blur-xl border-b border-border bg-primary-bg/80 pt-[env(safe-area-inset-top,0px)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16 sm:h-20">
           {/* Logo */}

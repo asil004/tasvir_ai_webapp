@@ -143,7 +143,12 @@ apiClient.interceptors.response.use(
 const api = {
   getCategories: async (): Promise<CategoriesResponse> => {
     const response = await apiClient.get(`/api/v1/categories`);
-    return response.data;
+    const data = response.data;
+    console.log('📂 Categories raw response:', data);
+    return {
+      categories: data?.categories || data?.items || data?.data || [],
+      total: data?.total || 0,
+    };
   },
 
   getTemplates: async (page: number = 1, limit: number = 6, categoryId?: number): Promise<TemplatesResponse> => {
@@ -152,7 +157,32 @@ const api = {
       params.category_id = categoryId;
     }
     const response = await apiClient.get(`/api/v1/templates`, { params });
-    return response.data;
+    const data = response.data;
+    console.log('📋 Templates raw response:', data);
+
+    // Handle different possible response formats from backend
+    const rawTemplates = data?.templates || data?.items || data?.data || [];
+
+    // Map snake_case fields to camelCase if needed
+    const templates = rawTemplates.map((t: any) => ({
+      id: t.id,
+      title: t.title,
+      description: t.description,
+      image: t.image || t.preview_url || t.image_url || t.thumbnail || '',
+      requiredImages: t.requiredImages ?? t.required_images ?? 1,
+      usageCount: t.usageCount ?? t.usage_count ?? 0,
+      priceStars: t.priceStars ?? t.price_stars,
+      priceUzs: t.priceUzs ?? t.price_uzs,
+      size: t.size,
+      category: t.category,
+    }));
+
+    return {
+      templates,
+      total: data?.total || 0,
+      page: data?.page || page,
+      total_pages: data?.total_pages || 1,
+    };
   },
 
   checkSubscription: async (userId: number, templateId: number): Promise<SubscriptionCheckResponse> => {

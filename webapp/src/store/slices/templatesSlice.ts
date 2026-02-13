@@ -69,7 +69,7 @@ const templatesSlice = createSlice({
       })
       .addCase(fetchCategories.fulfilled, (state, action: PayloadAction<CategoriesResponse>) => {
         state.categoriesLoading = false;
-        state.categories = action.payload.categories;
+        state.categories = action.payload?.categories || [];
       })
       .addCase(fetchCategories.rejected, (state) => {
         state.categoriesLoading = false;
@@ -80,10 +80,10 @@ const templatesSlice = createSlice({
       })
       .addCase(fetchTemplates.fulfilled, (state, action: PayloadAction<TemplatesResponse>) => {
         state.loading = false;
-        state.templates = action.payload.templates;
-        state.total = action.payload.total;
-        state.currentPage = action.payload.page;
-        state.totalPages = action.payload.total_pages;
+        state.templates = action.payload?.templates || [];
+        state.total = action.payload?.total || 0;
+        state.currentPage = action.payload?.page || 1;
+        state.totalPages = action.payload?.total_pages || 1;
       })
       .addCase(fetchTemplates.rejected, (state, action) => {
         state.loading = false;
