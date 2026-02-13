@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { fetchTemplates, fetchCategories, setPage, setSelectedCategory, incrementTemplateUsage } from '@/store/slices/templatesSlice';
 import {
@@ -42,6 +42,7 @@ export default function Home() {
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'stars' | 'click' | null>(null);
   const [currentGenerationRequestId, setCurrentGenerationRequestId] = useState<number | null>(null);
+  const generationRequestIdRef = useRef<number | null>(null);
   const [currentGateway, setCurrentGateway] = useState<'CLICK' | 'STARS' | 'SUBGRAM' | 'FREE'>('FREE');
 
   const { templates, currentPage, totalPages, itemsPerPage, loading, categories, selectedCategoryId, categoriesLoading } = useAppSelector(
@@ -89,6 +90,7 @@ export default function Home() {
     dispatch(resetGeneration());
     setSelectedPaymentMethod(null);
     setCurrentGenerationRequestId(null);
+    generationRequestIdRef.current = null;
     setCurrentGateway('FREE');
     setPaymentLoading(false);
   };
@@ -206,6 +208,7 @@ export default function Home() {
       }
 
       setCurrentGenerationRequestId(generationResult.request_id);
+      generationRequestIdRef.current = generationResult.request_id;
 
       // Step 2: Create payment
       console.log('💳 Creating payment...', {
@@ -374,16 +377,18 @@ export default function Home() {
 
   const handlePaymentSuccess = async () => {
     // ⭐ STARS: Called when Stars payment is successful via invoice callback
-    console.log('⭐ handlePaymentSuccess called');
+    // Use ref instead of state to avoid stale closure in tg.openInvoice callback
+    const requestId = generationRequestIdRef.current;
+    console.log('⭐ handlePaymentSuccess called, requestId:', requestId);
 
-    if (!currentGenerationRequestId) {
+    if (!requestId) {
       console.error('⭐ No generation request ID found');
       showAlertMessage('Generation request topilmadi');
       return;
     }
 
     console.log('⭐ Stars payment success, calling confirm-payment...', {
-      generationRequestId: currentGenerationRequestId,
+      generationRequestId: requestId,
     });
 
     setPaymentLoading(true);
@@ -391,7 +396,7 @@ export default function Home() {
     try {
       // FAQAT STARS UCHUN: confirm-payment chaqiramiz
       const confirmResult = await api.confirmPayment(
-        currentGenerationRequestId,
+        requestId,
         'stars'
       );
 
@@ -404,7 +409,7 @@ export default function Home() {
         setModalStep('generating');
         setPaymentLoading(false);
         dispatch(setProgress(10));
-        pollGenerationStatus(currentGenerationRequestId);
+        pollGenerationStatus(requestId);
       } else {
         console.error('⭐ Confirm payment failed:', confirmResult);
         showAlertMessage(confirmResult?.message || 'Stars to\'lovni tasdiqlashda xatolik', 'error');
@@ -422,16 +427,18 @@ export default function Home() {
   const checkPaymentAndGenerate = async () => {
     // 💳 CLICK: Faqat status tekshiramiz, confirm-payment CHAQIRILMAYDI
     // Webhook allaqachon generatsiyani boshlagan bo'lishi kerak
+    // Use ref instead of state to avoid stale closure
+    const requestId = generationRequestIdRef.current;
     console.log('💳 checkPaymentAndGenerate called');
 
-    if (!currentGenerationRequestId) {
+    if (!requestId) {
       console.error('💳 No generation request ID found');
       showAlertMessage('Generation request topilmadi');
       return;
     }
 
     console.log('💳 Click payment check started, polling status...', {
-      generationRequestId: currentGenerationRequestId,
+      generationRequestId: requestId,
       note: 'confirm-payment NOT called for Click',
     });
 
@@ -439,7 +446,7 @@ export default function Home() {
 
     try {
       // Status tekshirish
-      const statusResult = await api.getGenerationStatus(currentGenerationRequestId);
+      const statusResult = await api.getGenerationStatus(requestId);
 
       console.log('💳 Click status check result:', statusResult);
 
@@ -450,7 +457,7 @@ export default function Home() {
       ) {
         // ✅ Webhook ishlagan! Generatsiya boshlangan
         console.log('💳 Payment confirmed by webhook! Starting generation...');
-        console.log('💳 Current generation request ID:', currentGenerationRequestId);
+        console.log('💳 Current generation request ID:', requestId);
 
         setModalStep('generating');
         setPaymentLoading(false);
@@ -461,7 +468,7 @@ export default function Home() {
           console.log('💳 Already COMPLETED! Image URL:', statusResult.image_url);
           if (statusResult.image_url) {
             // Update Redux state directly
-            dispatch(checkGenerationStatus(currentGenerationRequestId));
+            dispatch(checkGenerationStatus(requestId));
             // Show result immediately
             setTimeout(() => {
               setModalStep('result');
@@ -473,7 +480,7 @@ export default function Home() {
           }
         } else {
           // Start polling
-          pollGenerationStatus(currentGenerationRequestId);
+          pollGenerationStatus(requestId);
         }
       } else if (statusResult.status === 'WAITING_PAYMENT' || statusResult.status === 'awaiting_payment') {
         // ⏳ Webhook hali kelmagan, 3 soniyadan keyin qayta tekshiramiz
@@ -504,6 +511,7 @@ export default function Home() {
   const handleCancelPayment = () => {
     setSelectedPaymentMethod(null);
     setCurrentGenerationRequestId(null);
+    generationRequestIdRef.current = null;
     setPaymentLoading(false);
     setModalStep('payment');
   };
