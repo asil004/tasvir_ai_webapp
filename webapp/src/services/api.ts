@@ -270,7 +270,7 @@ const api = {
     userId: number,
     templateId: number,
     generationRequestId: number,
-    paymentMethod: 'stars' | 'click'
+    paymentMethod: 'stars' | 'click' | 'tg_payments'
   ): Promise<PaymentCreateResponse> => {
     console.log('💳 Sending payment request:', {
       user_id: userId,
@@ -298,9 +298,9 @@ const api = {
         throw new Error('Bo\'sh javob qaytdi');
       }
 
-      // For stars, check invoice_url
-      if (paymentMethod === 'stars' && !response.data.invoice_url) {
-        console.error('❌ Missing invoice_url in Stars response:', response.data);
+      // For stars or tg_payments, check invoice_url
+      if ((paymentMethod === 'stars' || paymentMethod === 'tg_payments') && !response.data.invoice_url) {
+        console.error('❌ Missing invoice_url in response:', response.data);
         throw new Error('Invoice URL topilmadi');
       }
 
@@ -324,7 +324,7 @@ const api = {
 
   confirmPayment: async (
     generationRequestId: number,
-    paymentMethod: 'stars' | 'click'
+    paymentMethod: 'stars' | 'click' | 'tg_payments'
   ): Promise<PaymentConfirmResponse> => {
     console.log('✅ Sending payment confirmation:', {
       generation_request_id: generationRequestId,

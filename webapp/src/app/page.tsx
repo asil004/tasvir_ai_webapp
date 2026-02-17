@@ -40,7 +40,7 @@ export default function Home() {
   const [alertErrorDetail, setAlertErrorDetail] = useState<string | undefined>(undefined);
   const [mounted, setMounted] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'stars' | 'click' | null>(null);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'stars' | 'click' | 'tg_payments' | null>(null);
   const [currentGenerationRequestId, setCurrentGenerationRequestId] = useState<number | null>(null);
   const generationRequestIdRef = useRef<number | null>(null);
   const [currentGateway, setCurrentGateway] = useState<'CLICK' | 'STARS' | 'SUBGRAM' | 'FREE'>('FREE');
@@ -167,7 +167,7 @@ export default function Home() {
     }
   };
 
-  const handleSelectPaymentMethod = async (method: 'stars' | 'click') => {
+  const handleSelectPaymentMethod = async (method: 'stars' | 'click' | 'tg_payments') => {
     setSelectedPaymentMethod(method);
     setPaymentLoading(true);
 
@@ -194,7 +194,7 @@ export default function Home() {
         userId,
         files,
         false, // payment_verified = false
-        method === 'stars' ? 'STARS' : 'CLICK'
+        method === 'stars' ? 'STARS' : method === 'tg_payments' ? 'STARS' : 'CLICK'
       );
 
       console.log('📸 Generation result:', generationResult);
@@ -245,61 +245,62 @@ export default function Home() {
       }
 
       // Step 3: Open payment UI
-      if (method === 'stars') {
-        // Stars payment flow
+      if (method === 'stars' || method === 'tg_payments') {
+        // Stars / tg_payments payment flow (both use Telegram invoice)
         if (!paymentResult.invoice_url) {
           console.error('❌ Invoice URL missing:', paymentResult);
           throw new Error('Invoice URL not received from backend');
         }
-        console.log('⭐ Stars payment - checking Telegram support...');
+        const label = method === 'tg_payments' ? 'Uzcard/Humo' : 'Stars';
+        console.log(`💳 ${label} payment - checking Telegram support...`);
 
-        // Check if Stars payment is supported
+        // Check if invoice is supported
         if (!isInvoiceSupported()) {
           const tg = getTelegramWebApp();
           const version = tg?.version || 'unknown';
 
-          console.warn('⭐ Stars not supported, Telegram version:', version);
+          console.warn(`💳 ${label} not supported, Telegram version:`, version);
           showAlertMessage(
-            `Telegram ilovangiz eskiroq (v${version}). Stars to'lovi uchun Telegram'ni yangilang (v6.1+) yoki Click orqali to'lang.`
+            `Telegram ilovangiz eskiroq (v${version}). To'lov uchun Telegram'ni yangilang (v6.1+) yoki Click orqali to'lang.`
           );
           setPaymentLoading(false);
           setModalStep('payment');
           return;
         }
 
-        // Open Telegram Stars invoice
+        // Open Telegram invoice
         const tg = getTelegramWebApp();
         if (tg && tg.openInvoice) {
-          console.log('⭐ Opening Stars invoice:', paymentResult.invoice_url);
-          console.log('⭐ Telegram version:', tg.version);
+          console.log(`💳 Opening ${label} invoice:`, paymentResult.invoice_url);
+          console.log(`💳 Telegram version:`, tg.version);
 
           setModalStep('payment_waiting');
           setPaymentLoading(false);
 
           // Use invoice_url (not payload!)
           tg.openInvoice(paymentResult.invoice_url, (status) => {
-            console.log('⭐ Invoice callback status:', status);
+            console.log(`💳 ${label} invoice callback status:`, status);
 
             if (status === 'paid') {
-              console.log('⭐ Payment successful!');
+              console.log(`💳 ${label} payment successful!`);
               handlePaymentSuccess();
             } else if (status === 'cancelled') {
-              console.log('⭐ Payment cancelled');
+              console.log(`💳 ${label} payment cancelled`);
               setPaymentLoading(false);
               showAlertMessage('To\'lov bekor qilindi');
               setModalStep('payment');
             } else if (status === 'failed') {
-              console.error('⭐ Payment failed');
+              console.error(`💳 ${label} payment failed`);
               setPaymentLoading(false);
               showAlertMessage('To\'lov xatosi');
               setModalStep('payment');
             } else if (status === 'pending') {
-              console.log('⭐ Payment pending, waiting...');
+              console.log(`💳 ${label} payment pending, waiting...`);
               // Keep waiting
             }
           });
         } else {
-          console.error('⭐ Telegram WebApp not available');
+          console.error('💳 Telegram WebApp not available');
           showAlertMessage('Telegram WebApp mavjud emas. Brauzerda test qilyapsizmi?');
           setPaymentLoading(false);
           setModalStep('payment');
@@ -394,10 +395,10 @@ export default function Home() {
     setPaymentLoading(true);
 
     try {
-      // FAQAT STARS UCHUN: confirm-payment chaqiramiz
+      // STARS yoki TG_PAYMENTS uchun: confirm-payment chaqiramiz
       const confirmResult = await api.confirmPayment(
         requestId,
-        'stars'
+        selectedPaymentMethod || 'stars'
       );
 
       console.log('⭐ Stars confirm-payment result:', confirmResult);

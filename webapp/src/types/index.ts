@@ -70,7 +70,7 @@ export interface SubscriptionCheckResponse {
 
 export interface PaymentCreateResponse {
   status: string;
-  payment_method: 'stars' | 'click';
+  payment_method: 'stars' | 'click' | 'tg_payments';
   invoice_url?: string;  // Stars uchun - Telegram invoice URL
   payment_url?: string;  // Click uchun - Click payment URL
   price?: number;

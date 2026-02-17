@@ -6,14 +6,14 @@ import { formatNumber } from '@/utils/helpers';
 import { isInvoiceSupported, getTelegramWebApp } from '@/utils/telegram';
 
 interface PaymentModalProps {
-  onSelectPayment: (method: 'stars' | 'click') => void;
+  onSelectPayment: (method: 'stars' | 'click' | 'tg_payments') => void;
   onBack: () => void;
   loading?: boolean;
 }
 
 export default function PaymentModal({ onSelectPayment, onBack, loading = false }: PaymentModalProps) {
   const { priceStars, priceUzs } = useAppSelector((state) => state.subscription);
-  const [selectedMethod, setSelectedMethod] = useState<'stars' | 'click' | null>(null);
+  const [selectedMethod, setSelectedMethod] = useState<'stars' | 'click' | 'tg_payments' | null>(null);
   const [starsSupported, setStarsSupported] = useState(true);
   const [telegramVersion, setTelegramVersion] = useState('');
 
@@ -27,8 +27,8 @@ export default function PaymentModal({ onSelectPayment, onBack, loading = false 
     }
   }, []);
 
-  const handleSelect = (method: 'stars' | 'click') => {
-    if (method === 'stars' && !starsSupported) {
+  const handleSelect = (method: 'stars' | 'click' | 'tg_payments') => {
+    if ((method === 'stars' || method === 'tg_payments') && !starsSupported) {
       return; // Disabled
     }
     setSelectedMethod(method);
@@ -78,6 +78,44 @@ export default function PaymentModal({ onSelectPayment, onBack, loading = false 
             {!starsSupported && (
               <p className="text-xs text-red-500 mt-2 px-2">
                 ⚠️ Telegram v6.1+ talab qilinadi. Iltimos, ilovani yangilang yoki Click orqali to'lang.
+              </p>
+            )}
+          </button>
+        )}
+
+        {/* Uzcard/Humo - Telegram Payments */}
+        {priceUzs && priceUzs > 0 && (
+          <button
+            onClick={() => handleSelect('tg_payments')}
+            disabled={loading || !starsSupported}
+            className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
+              selectedMethod === 'tg_payments'
+                ? 'border-accent bg-accent/10'
+                : 'border-border hover:border-accent'
+            } ${loading || !starsSupported ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 bg-gradient-to-br from-[#1e88e5] to-[#0d47a1] rounded-full flex items-center justify-center text-2xl">
+                  💳
+                </div>
+                <div>
+                  <p className="font-mono font-bold text-base sm:text-lg">Uzcard/Humo</p>
+                  <p className="text-secondary-text text-xs">Telegram orqali to'lash</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="font-mono font-bold text-lg sm:text-xl text-accent">
+                  {formatNumber(priceUzs)} so'm
+                </p>
+                <p className="text-secondary-text text-xs">
+                  {starsSupported ? 'Tezkor' : `v${telegramVersion} - Yangilang`}
+                </p>
+              </div>
+            </div>
+            {!starsSupported && (
+              <p className="text-xs text-red-500 mt-2 px-2">
+                Telegram v6.1+ talab qilinadi. Iltimos, ilovani yangilang.
               </p>
             )}
           </button>

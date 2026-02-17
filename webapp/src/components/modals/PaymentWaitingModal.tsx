@@ -3,7 +3,7 @@
 import React from 'react';
 
 interface PaymentWaitingModalProps {
-  paymentMethod: 'stars' | 'click';
+  paymentMethod: 'stars' | 'click' | 'tg_payments';
   onCheckPayment: () => void;  // Click uchun - faqat status tekshiradi
   onCancel: () => void;
   loading?: boolean;
@@ -15,8 +15,8 @@ export default function PaymentWaitingModal({
   onCancel,
   loading = false,
 }: PaymentWaitingModalProps) {
-  // Stars uchun - avtomatik callback, faqat loading ko'rsatamiz
-  if (paymentMethod === 'stars') {
+  // Stars yoki tg_payments uchun - avtomatik callback, faqat loading ko'rsatamiz
+  if (paymentMethod === 'stars' || paymentMethod === 'tg_payments') {
     return (
       <div className="space-y-4 py-4">
         <div className="text-center space-y-3">
